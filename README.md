@@ -1,1 +1,6 @@
 # chat-app-v2
+
+# TECH STACK
+FRONT-END
+
+BACK-END
