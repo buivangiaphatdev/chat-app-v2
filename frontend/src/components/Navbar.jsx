@@ -25,7 +25,7 @@ const Navbar = () => {
               className={`btn btn-sm gap-2 transition-colors`}
             >
               <Settings className="w-4 h-4" />
-              <span className="hidden sm:inlinde">Settings</span>
+              <span className="sm:inlinde">Settings</span>
             </Link>
             {authUser && (
               <>
