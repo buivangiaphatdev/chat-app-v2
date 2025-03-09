@@ -5,15 +5,36 @@ import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } =
+  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading,unreadMessages, setUnreadMessages } =
     useChatStore();
 
-  const { onlineUsers } = useAuthStore();
+  const { onlineUsers, socket  } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
   useEffect(() => {
     getUsers();
   }, [getUsers]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (newMessage) => {
+      if (selectedUser && selectedUser._id === newMessage.senderId) {
+        return;
+      }
+
+      setUnreadMessages((prev) => ({
+        ...prev,
+        [newMessage.senderId]: (prev[newMessage.senderId] || 0) + 1,
+      }));
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [socket, selectedUser, setUnreadMessages]);
 
   const filteredUsers = showOnlineOnly
     ? users.filter((user) => onlineUsers.includes(user._id))
@@ -67,7 +88,20 @@ const Sidebar = () => {
                 rounded-full ring-2 ring-zinc-900"
                 />
               )}
+              {/* Hiển thị chấm đỏ nếu có tin nhắn chưa đọc */}
+            {unreadMessages[user._id] > 0 && (
+               <span
+               className="absolute top-0 right-0 flex items-center justify-center
+               bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 
+               ring-2 ring-white"
+             >
+               {unreadMessages[user._id] > 9 ? "9+" : unreadMessages[user._id]}
+             </span>
+              )}
             </div>
+
+            
+            
             {/* User info-only visible on larger screens */}
             <div className="hidden lg:block text-left min-w-0">
               <div className="font-medium truncate">{user.fullName}</div>

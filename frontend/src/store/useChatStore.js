@@ -7,6 +7,7 @@ export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
   selectedUser: null,
+  unreadMessages: {},
   isUsersLoading: false,
   isMessagesLoading: false,
 
@@ -23,13 +24,19 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  setUnreadMessages: (callback) =>
+    set((state) => ({ unreadMessages: callback(state.unreadMessages) })),
+
   getMessages: async (userId) => {
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
-      set({ messages: res.data });
+      set((state) => ({
+        messages: res.data,
+        unreadMessages: { ...state.unreadMessages, [userId]: 0 }, // Reset tin nhắn chưa đọc khi mở
+      }));
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Lỗi tải tin nhắn");
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -43,8 +50,12 @@ export const useChatStore = create((set, get) => ({
         messageData
       );
       set({ messages: [...messages, res.data] });
+
+      // Gửi tin nhắn qua socket
+      const socket = useAuthStore.getState().socket;
+      socket.emit("sendMessage", res.data);
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Lỗi gửi tin nhắn");
     }
   },
 
@@ -55,8 +66,9 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId===selectedUser._id;
-      if(!isMessageSentFromSelectedUser) return;
+      const isMessageSentFromSelectedUser =
+        newMessage.senderId === selectedUser._id;
+      if (!isMessageSentFromSelectedUser) return;
       set({
         messages: [...get().messages, newMessage],
       });
